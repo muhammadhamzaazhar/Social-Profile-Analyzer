@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Conversation Starter</title>
+    <link
+      rel="icon"
+      type="image/png"
+      href="{{ url_for('static', filename='favicon.png') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@chgibb/css-spinners@2.2.1/css/spinner/three-quarters.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+  </head>
+  <body>
+    <header>
+      <form id="name-form">
+        <h1>Conversation Starter</h1>
+        <input
+          type="text"
+          name="name"
+          placeholder="Enter a person's name"
+          required
+        />
+        <button id="magic-button" type="submit">Find Profile ✨</button>
+      </form>
+    </header>
+
+    <div id="error-message" class="error-container" style="display: none">
+      <span id="error-text"></span>
+      <button onclick="hideError()" class="close-btn">&times;</button>
+    </div>
+
+    <div id="spinner" style="text-align: center; display: none">
+      <span
+        class="three-quarters-loader"
+        style="width: 80px; height: 80px; border-width: 10px"
+      ></span>
+    </div>
+
+    <main id="result" style="display: none">
+      <div style="text-align: center; margin-bottom: 1em">
+        <img id="profile-pic" src="" alt="Profile Picture" />
+      </div>
+
+      <div class="summary-box">
+        <h2>Summary</h2>
+        <p id="summary"></p>
+      </div>
+
+      <div>
+        <h2>Interesting Facts</h2>
+        <div id="facts" class="card-section"></div>
+      </div>
+
+      <div>
+        <h2>Ice Breakers</h2>
+        <div id="ice-breakers" class="card-section"></div>
+      </div>
+
+      <div>
+        <h2>Topics of Interest</h2>
+        <div id="topics-of-interest" class="card-section"></div>
+      </div>
+    </main>
+
+    <script>
+      const form = document.getElementById("name-form");
+      const spinner = document.getElementById("spinner");
+      const result = document.getElementById("result");
+
+      form.addEventListener("submit", (ev) => {
+        ev.preventDefault();
+
+        result.style.display = "none";
+        hideError();
+        spinner.style.display = "";
+
+        const formData = new FormData(form);
+
+        fetch("/process", { method: "POST", body: formData })
+          .then((response) =>
+            response
+              .json()
+              .then((data) => ({ status: response.status, body: data }))
+          )
+          .then(({ status, body }) => {
+            spinner.style.display = "none";
+
+            if (status !== 200) {
+              showError(body.error || "Something went wrong.");
+              return;
+            }
+
+            hideError();
+            const profilePic = document.getElementById("profile-pic");
+            profilePic.src =
+              body.picture_url && body.picture_url.trim()
+                ? body.picture_url
+                : "/static/default-avatar.jpg";
+            document.getElementById("summary").textContent =
+              body.summary_and_facts.summary;
+
+            createHtmlList(
+              document.getElementById("facts"),
+              body.summary_and_facts.facts
+            );
+            createHtmlList(
+              document.getElementById("ice-breakers"),
+              body.ice_breakers.ice_breakers
+            );
+            createHtmlList(
+              document.getElementById("topics-of-interest"),
+              body.interests.topics_of_interest
+            );
+
+            result.style.display = "";
+          })
+          .catch((error) => {
+            spinner.style.display = "none";
+            showError("An unexpected error occurred: " + error.message);
+          });
+      });
+
+      function createHtmlList(element, items) {
+        const ul = document.createElement("ul");
+        items.forEach((item) => {
+          const li = document.createElement("li");
+          li.textContent = item;
+          ul.appendChild(li);
+        });
+        element.innerHTML = "";
+        element.appendChild(ul);
+      }
+
+      function showError(message) {
+        const errorDiv = document.getElementById("error-message");
+        errorDiv.textContent = message;
+        errorDiv.style.display = "block";
+        result.style.display = "none";
+      }
+
+      function hideError() {
+        const errorDiv = document.getElementById("error-message");
+        errorDiv.textContent = "";
+        errorDiv.style.display = "none";
+      }
+    </script>
+  </body>
+</html>
